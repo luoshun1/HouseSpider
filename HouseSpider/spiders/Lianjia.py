@@ -5,6 +5,9 @@ from scrapy.spiders import CrawlSpider, Rule
 
 from HouseSpider.items import LianJiaItem
 
+import math
+import urllib
+
 
 class LianjiaSpider(CrawlSpider):
     name = 'Lianjia'
@@ -23,7 +26,11 @@ class LianjiaSpider(CrawlSpider):
         Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.lianjia\.com/zufang/pg\d+/'), follow=True),
         Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.lianjia\.com/zufang/\w+\.html'), callback='parse_zufang'),
 
-        # Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/?$'), follow=True),
+        Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/?$'), follow=True),
+        Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/loupan/?$'), callback='parse_xinfang_page'),
+        Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/loupan/pg\d+'), follow=True),
+        Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/loupan/p_\w+'), callback='parse_xinfang'),
+        # Rule(LinkExtractor(allow=r'//[a-z]{2,5}\.fang\.lianjia\.com/loupan/p_\w+/xiangqing/?$'), callback=''), # 待优化
     )
 
     def parse_item(self, response):
@@ -66,6 +73,34 @@ class LianjiaSpider(CrawlSpider):
         item['houseArea'] = self.check_empty(response.xpath('//div[@id="info"]/ul[1]/li[2]/text()').re(r'\d+'))
         item['houseBaiduLongitude'] = self.check_empty(response.xpath('//script').re('longitude: \'([\d\.]+)\','))
         item['houseBaiduLatitude'] = self.check_empty(response.xpath('//script').re('latitude: \'([\d\.]+)\''))
+
+        return item
+
+    def parse_xinfang_page(self, response):
+        total_page = response.xpath('//div[@class="page-box"]/@data-total-count').extract_first()
+        total_page = math.ceil(int(total_page)) if total_page else None
+        if total_page:
+            for i in range(total_page):
+                url = urllib.parse.urljoin(response.request.url, 'pg' + str(i))
+
+                yield scrapy.Request(
+                    url,
+                    callback=self.parse,
+                )
+
+    def parse_xinfang(self, response):
+        item = LianJiaItem()
+        item['houseType'] = 'xinfang'
+        item['houseUrl'] = response.request.url
+        item['houseTitle'] = response.xpath('/html/head/title/text()').extract_first()
+        item['houseCity'] = response.xpath('//a[@class="s-city"]/text()').extract_first()
+        item['houseName'] = response.xpath('//div[@class="title-wrap"]/div/h2[@class="DATA-PROJECT-NAME"]/text()').extract_first()
+        item['housePublishedTime'] = response.xpath('//div[@class="open-date"]/span[@class="content"]/text()').extract_first()
+        item['housePrice'] = response.xpath('//div[@class="price"]/span[4]/text()').extract_first()
+        item['houseUnitPrice'] = response.xpath('//div[@class="price"]/span[2]/text()').extract_first()
+        coord = response.xpath('//div[@class="album "]/span[@class="btn-s hide"]/@data-coord').extract_first()
+        item['houseBaiduLongitude'] = float(coord.split(',')[0]) if coord else None
+        item['houseBaiduLatitude'] = float(coord.split(',')[1]) if coord else None
 
         return item
 

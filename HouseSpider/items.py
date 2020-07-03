@@ -30,3 +30,5 @@ class LianJiaItem(scrapy.Item):
     houseBaiduLongitude = scrapy.Field() # 经度
     houseBaiduLatitude = scrapy.Field() # 纬度
 
+    houseUnitPrice = scrapy.Field() # 新房单价
+
