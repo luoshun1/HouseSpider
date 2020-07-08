@@ -63,7 +63,7 @@ class HousespiderDownloaderMiddleware:
     def process_request(self, request, spider):
         thisip = random.choice(spider.settings.get('IPPOOL'))
         # print("this is ip:" + thisip["ipaddr"])
-        request.meta["proxies"] = "http://" + thisip["ipaddr"]
+        request.meta["proxies"] = "http://" + thisip["https"]
 
         ua = UserAgent()
         request.headers['User-Agent'] = ua.random
